@@ -21,3 +21,4 @@ if st.button('Run Simulation'):
     # Output results
     st.write(f'Optimal x: {model.x.value}')
     st.write(f'Minimum Objective: {model.obj()}')
+##
