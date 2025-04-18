@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: .
+    container_name: my_solver_app
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    command: streamlit run app.py
+
+  # remove OpenFOAM section if you're not using it anymore

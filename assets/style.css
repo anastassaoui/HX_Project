@@ -1,0 +1,35 @@
+/* assets/style.css */
+
+[data-testid="stSidebar"] {
+    background-color: #f9fafb;
+    border-right: 1px solid #e5e7eb;
+    padding-top: 1rem;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  [data-testid="stSidebar"] .css-1v3fvcr {
+    color: #1f2937;
+    font-weight: 600;
+  }
+  
+  h1, h2, h3, h4, h5 {
+    color: #111827;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  button[kind="primary"] {
+    background-color: #4f46e5;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+  }
+  
+  .stButton > button:hover {
+    background-color: #4338ca;
+  }
+  
+  [data-testid="stSidebarNav"] ul {
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  
