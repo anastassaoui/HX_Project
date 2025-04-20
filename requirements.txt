@@ -1,6 +1,8 @@
 streamlit
-pyomo
-groq
 python-dotenv
+groq
 fipy
-
+numpy
+plotly
+matplotlib
+pillow
