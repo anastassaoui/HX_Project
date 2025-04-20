@@ -3,7 +3,4 @@ pyomo
 groq
 python-dotenv
 fipy
-matplotlib
-fluidsim[fft,mpi]>=0.8.4
-matplotlib>=3.5
 
