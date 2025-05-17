@@ -1,9 +1,7 @@
 streamlit
-python-dotenv
-groq
-fipy
 numpy
-plotly
-matplotlib
 pillow
 gunicorn
+joblib
+pandas
+ht
