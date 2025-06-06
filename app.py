@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from streamlit_option_menu import option_menu
 
 from ht.hx import (
     Ntubes,
@@ -65,16 +64,16 @@ def geometry_section(compute_all: bool) -> None:
     left, right = st.columns([2, 1])
     with left:
         with st.form("geom_form"):
-            r1c1, r1c2 = st.columns(2)
-            Do = r1c1.number_input("Ø extérieur [m]", 0.005, 0.1, 0.025)
-            pitch = r1c2.number_input("Pas triangulaire [m]", 0.01, 0.1, 0.03125)
+            c1, c2, c3 = st.columns(3)
+            Do = c1.number_input("Ø extérieur [m]", 0.005, 0.1, 0.025)
+            pitch = c2.number_input("Pas triangulaire [m]", 0.01, 0.1, 0.03125)
+            angle = c3.selectbox("Angle [°]", [30, 45, 60, 90], index=0)
 
-            r2c1, r2c2 = st.columns(2)
-            angle = r2c1.selectbox("Angle d'agencement [°]", [30, 45, 60, 90], index=0)
-            Ntp = r2c2.selectbox("Passes tubes", [1, 2], index=1)
+            c4, c5, c6 = st.columns(3)
+            Ntp = c4.selectbox("Passes tubes", [1, 2], index=1)
+            N = c5.slider("Nombre de tubes", 1, 2000, 928)
+            L_unsupported = c6.number_input("Longueur non supportée [m]", 0.1, 10.0, 0.75)
 
-            N = st.slider("Nombre de tubes", 1, 2000, 928)
-            L_unsupported = st.number_input("Longueur non supportée [m]", 0.1, 10.0, 0.75)
             material = st.selectbox("Matériau du tube", ["CS", "aluminium"])
 
             submit = st.form_submit_button("Calculer géométrie")
@@ -314,21 +313,15 @@ st.title("🧪 Suite d'Ingénierie : Échangeur Tubulaire à Calandre")
 init_session_state()
 
 with st.sidebar:
-    st.header("Navigation")
     compute_all = st.button("🚀 Calculer tout")
-    selection = option_menu(
-        menu_title="",
-        options=["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"],
-        icons=["rulers", "arrows-angle-contract", "graph-up", "table"],
-        menu_icon="cast",
-        default_index=0,
-    )
 
-if selection == "Géométrie":
+tabs = st.tabs(["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"])
+
+with tabs[0]:
     geometry_section(compute_all)
-elif selection == "Jeu Calandre":
+with tabs[1]:
     clearance_section(compute_all)
-elif selection == "Efficacité":
+with tabs[2]:
     effectiveness_section(compute_all)
-elif selection == "Résumé":
+with tabs[3]:
     summary_section(compute_all)

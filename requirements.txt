@@ -6,4 +6,3 @@ joblib
 pandas
 ht
 xgboost
-streamlit-option-menu
