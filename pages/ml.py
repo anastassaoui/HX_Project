@@ -17,6 +17,21 @@ FEATURES = [
 st.set_page_config(page_title="HX Fouling Predictor", layout="wide")
 st.title("Heat-Exchanger Fouling Prognostics")
 
+# Tailwind and FontAwesome for enhanced UI
+st.markdown(
+    """
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <div class="mt-4 mb-6 bg-gray-50 border-l-4 border-blue-500 p-4 flex items-center">
+        <i class="fas fa-info-circle text-blue-500 text-2xl mr-3"></i>
+        <p class="text-sm text-gray-700">
+            Enter your operational data below to predict fouling buildup and cleaning schedule.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 with st.form("hx_form"):
 
     rtc = st.number_input("Hours since last cleaning", 0, 7*365*24, 100)
