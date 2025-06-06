@@ -27,19 +27,35 @@ F = f(\mathbf{x}), \qquad \tau = \max\bigl( g(\mathbf{x}),0 \bigr).
 \end{equation}
 Here $F$ denotes the predicted fouling level and $\tau$ the remaining hours before cleaning. The interface renders these values using \texttt{st.metric} widgets.
 \section{Design Suite}
-The main application in \texttt{app.py} offers tools for sizing the tube bundle, assessing shell clearance and computing thermal effectiveness. Important functions provided by the external package \texttt{ht.hx} include:
-\begin{align}
-D_{\text{bundle}} &= \text{size\_bundle\_from\_tubecount}(N, D_o, p, N_{tp}, \alpha),\\
-N_{\text{tubes}} &= \text{Ntubes}(D_{\text{bundle}}, D_o, p, N_{tp}, \alpha),\\
-\epsilon &= \text{temperature\_effectiveness\_\textit{type}}(R_1,\,\text{NTU},\,N_{tp},\,\text{option}),
-\end{align}
-where $N$ is the number of tubes, $D_o$ their outer diameter, $p$ the triangular pitch and $\alpha$ the arrangement angle. The thermal effectiveness functions cover TEMA E/G/H/J configurations, air coolers and plate exchangers.
-\subsection{P--NTU Solver}
-A general P--NTU method solves for outlet temperatures $T_{1,o}$ and $T_{2,o}$ using the heat balance
+The main application in \texttt{app.py} offers a collection of engineering tools.  All calculations ultimately call functions from the \texttt{ht.hx} package.
+
+\subsection{Geometry and Bundle Sizing}
+For a required number of tubes $N$ and tube outer diameter $D_o$ the bundle diameter is found as
 \begin{equation}
-q = U A \Delta T_{\text{lm}} = \dot m_1 c_{p,1}(T_{1,i} - T_{1,o}) = \dot m_2 c_{p,2}(T_{2,o} - T_{2,i}).
+  D_{\text{bundle}} = \text{size\_bundle\_from\_tubecount}(N, D_o, p, N_{tp}, \alpha).
 \end{equation}
-Given mass flow rates $\dot m_1$, $\dot m_2$, heat capacities $c_{p,1}$, $c_{p,2}$, inlet temperatures $T_{1,i}$, $T_{2,i}$ and the overall conductance $UA$, the function \texttt{P\_NTU\_method} computes the outlet temperatures consistent with a specific exchanger subtype.
+Conversely the number of tubes which will fit in a given shell is
+\begin{equation}
+  N_{\text{tubes}} = \text{Ntubes}(D_{\text{bundle}}, D_o, p, N_{tp}, \alpha).
+\end{equation}
+Alternative sizing correlations are exposed via \texttt{DBundle\_for\_Ntubes\_HEDH}, \texttt{DBundle\_for\_Ntubes\_Phadkeb} and \texttt{D\_for\_Ntubes\_VDI}.  A minimum shell diameter suggestion is available with \texttt{DBundle\_min}.  Tube hole and unsupported length checks rely on \texttt{D\_baffle\_holes} and \texttt{L\_unsupported\_max}.
+
+\subsection{Shell Clearance}
+The function \texttt{shell\_clearance} provides recommended clearances between the bundle and the shell.  Either $D_{\text{bundle}}$ or the shell diameter $D_{\text{shell}}$ is supplied and the tabled value from TEMA is returned.
+
+\subsection{Thermal Effectiveness}
+Temperature effectiveness methods implement the $P$--NTU relationships.  The basic one--pass forms are accessed through \texttt{temperature\_effectiveness\_basic} while specific TEMA geometries use
+\begin{align}
+  \text{temperature\_effectiveness\_TEMA\_E},\quad \text{temperature\_effectiveness\_TEMA\_G},\quad \text{temperature\_effectiveness\_TEMA\_H},\quad \text{temperature\_effectiveness\_TEMA\_J}.
+\end{align}
+Air cooler and plate type exchangers have dedicated routines \texttt{temperature\_effectiveness\_air\_cooler} and \texttt{temperature\_effectiveness\_plate}.
+
+\subsection{P--NTU Solver}
+For arbitrary inlet/outlet specifications the routine \texttt{P\_NTU\_method} solves for the remaining temperatures using the energy balance
+\begin{equation}
+  q = U A \Delta T_{\text{lm}} = \dot m_1 c_{p,1}(T_{1,i} - T_{1,o}) = \dot m_2 c_{p,2}(T_{2,o} - T_{2,i}).
+\end{equation}
+It returns $T_{1,o}$, $T_{2,o}$ and the heat duty $q$ for the selected subtype and number of tube passes.
 \section{Usage}
 Upon launching the dashboard with
 \begin{verbatim}
