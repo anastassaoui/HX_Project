@@ -1,0 +1,65 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\title{Heat Exchanger Dashboard Documentation}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+\tableofcontents
+\section{Introduction}
+The dashboard is built with \texttt{streamlit} and provides an interactive environment to design and analyse shell--and--tube heat exchangers. It exposes two main components:
+\begin{itemize}
+  \item A \textbf{machine learning} interface predicting fouling level and the expected time to cleaning.
+  \item A \textbf{design suite} for calculating geometry, shell clearance and thermal effectiveness using multiple methods.
+\end{itemize}
+\section{Machine Learning Predictor}
+The page \texttt{pages/ml.py} defines the interface for the fouling model. Users input the operating conditions and obtain predictions for fouling and time--to--cleaning. Let $\mathbf{x} \in \mathbb{R}^{11}$ denote the feature vector
+\begin{equation}
+\mathbf{x}=\begin{bmatrix}
+  t & \Delta T_h & \Delta T_c & \Delta P_{\text{shell}} & T_{h,\text{in}} & T_{c,\text{in}} \\ q_h & q_c & \mu_h & \mu_c & C_{s}
+\end{bmatrix},
+\end{equation}
+where $t$ is the runtime since cleaning, $\Delta T$ are the measured temperature differences, $q$ are mass flow rates, $\mu$ are viscosities and $C_s$ is the solids concentration. The models loaded from \texttt{model\_fouling.pkl} and \texttt{model\_ttc.pkl} are applied as
+\begin{equation}
+F = f(\mathbf{x}), \qquad \tau = \max\bigl( g(\mathbf{x}),0 \bigr).
+\end{equation}
+Here $F$ denotes the predicted fouling level and $\tau$ the remaining hours before cleaning. The interface renders these values using \texttt{st.metric} widgets.
+\section{Design Suite}
+The main application in \texttt{app.py} offers a collection of engineering tools.  All calculations ultimately call functions from the \texttt{ht.hx} package.
+
+\subsection{Geometry and Bundle Sizing}
+For a required number of tubes $N$ and tube outer diameter $D_o$ the bundle diameter is found as
+\begin{equation}
+  D_{\text{bundle}} = \text{size\_bundle\_from\_tubecount}(N, D_o, p, N_{tp}, \alpha).
+\end{equation}
+Conversely the number of tubes which will fit in a given shell is
+\begin{equation}
+  N_{\text{tubes}} = \text{Ntubes}(D_{\text{bundle}}, D_o, p, N_{tp}, \alpha).
+\end{equation}
+Alternative sizing correlations are exposed via \texttt{DBundle\_for\_Ntubes\_HEDH}, \texttt{DBundle\_for\_Ntubes\_Phadkeb} and \texttt{D\_for\_Ntubes\_VDI}.  A minimum shell diameter suggestion is available with \texttt{DBundle\_min}.  Tube hole and unsupported length checks rely on \texttt{D\_baffle\_holes} and \texttt{L\_unsupported\_max}.
+
+\subsection{Shell Clearance}
+The function \texttt{shell\_clearance} provides recommended clearances between the bundle and the shell.  Either $D_{\text{bundle}}$ or the shell diameter $D_{\text{shell}}$ is supplied and the tabled value from TEMA is returned.
+
+\subsection{Thermal Effectiveness}
+Temperature effectiveness methods implement the $P$--NTU relationships.  The basic one--pass forms are accessed through \texttt{temperature\_effectiveness\_basic} while specific TEMA geometries use
+\begin{align}
+  \text{temperature\_effectiveness\_TEMA\_E},\quad \text{temperature\_effectiveness\_TEMA\_G},\quad \text{temperature\_effectiveness\_TEMA\_H},\quad \text{temperature\_effectiveness\_TEMA\_J}.
+\end{align}
+Air cooler and plate type exchangers have dedicated routines \texttt{temperature\_effectiveness\_air\_cooler} and \texttt{temperature\_effectiveness\_plate}.
+
+\subsection{P--NTU Solver}
+For arbitrary inlet/outlet specifications the routine \texttt{P\_NTU\_method} solves for the remaining temperatures using the energy balance
+\begin{equation}
+  q = U A \Delta T_{\text{lm}} = \dot m_1 c_{p,1}(T_{1,i} - T_{1,o}) = \dot m_2 c_{p,2}(T_{2,o} - T_{2,i}).
+\end{equation}
+It returns $T_{1,o}$, $T_{2,o}$ and the heat duty $q$ for the selected subtype and number of tube passes.
+\section{Usage}
+Upon launching the dashboard with
+\begin{verbatim}
+streamlit run app.py
+\end{verbatim}
+users can expand each section to input parameters, trigger the computations and view the resulting metrics, tables and plots. The application keeps results in \texttt{st.session\_state} to allow comparison across runs.
+\end{document}
