@@ -7,3 +7,4 @@ pandas
 ht
 xgboost
 streamlit-navigation-bar
+streamlit-option-menu

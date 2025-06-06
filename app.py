@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from streamlit_navigation_bar import st_navbar
-
+from streamlit_option_menu import option_menu
 from ht.hx import (
     Ntubes,
     size_bundle_from_tubecount,
@@ -28,13 +27,13 @@ from ht.hx import (
 # ---------------------------------------------------------------------------
 
 def show_metric(label: str, value: float, unit: str = "") -> None:
-    """Display a numeric value as a Streamlit metric."""
+    """Display a numeric value using Streamlit metric."""
     formatted = f"{value:.5f} {unit}" if unit else f"{value:.5f}"
     st.metric(label, formatted)
 
 
 def effectiveness_chart(func, R1: float, **kwargs) -> None:
-    """Plot effectiveness vs. NTU using the provided correlation."""
+    """Plot effectiveness versus NTU for a given correlation."""
     NTU_range = np.linspace(0.1, 10.0, 50)
     effs = [func(R1, NTU, **kwargs) for NTU in NTU_range]
     df = pd.DataFrame({"NTU": NTU_range, "Effectiveness": effs}).set_index("NTU")
@@ -60,26 +59,25 @@ def init_session_state() -> None:
 # UI sections
 # ---------------------------------------------------------------------------
 
-def geometry_section(compute_all: bool) -> None:
-    st.header("📐 Calculs de Géométrie")
-    left, right = st.columns([2, 1])
-    with left:
+def geometry_section(run_all: bool) -> None:
+    st.subheader("📐 Calculs de Géométrie")
+    col_input, col_result = st.columns([2, 1])
+    with col_input:
         with st.form("geom_form"):
-            c1, c2, c3 = st.columns(3)
-            Do = c1.number_input("Ø extérieur [m]", 0.005, 0.1, 0.025)
-            pitch = c2.number_input("Pas triangulaire [m]", 0.01, 0.1, 0.03125)
-            angle = c3.selectbox("Angle [°]", [30, 45, 60, 90], index=0)
+            r1c1, r1c2, r1c3 = st.columns(3)
+            Do = r1c1.number_input("Ø extérieur [m]", 0.005, 0.1, 0.025)
+            pitch = r1c2.number_input("Pas triangulaire [m]", 0.01, 0.1, 0.03125)
+            angle = r1c3.selectbox("Angle [°]", [30, 45, 60, 90], index=0)
 
-            c4, c5, c6 = st.columns(3)
-            Ntp = c4.selectbox("Passes tubes", [1, 2], index=1)
-            N = c5.slider("Nombre de tubes", 1, 2000, 928)
-            L_unsupported = c6.number_input("Longueur non supportée [m]", 0.1, 10.0, 0.75)
+            r2c1, r2c2, r2c3 = st.columns(3)
+            Ntp = r2c1.selectbox("Passes tubes", [1, 2], index=1)
+            N = r2c2.slider("Nombre de tubes", 1, 2000, 928)
+            L_unsupported = r2c3.number_input("Longueur non supportée [m]", 0.1, 10.0, 0.75)
 
             material = st.selectbox("Matériau du tube", ["CS", "aluminium"])
-
             submit = st.form_submit_button("Calculer géométrie")
 
-        run = submit or compute_all
+        run = submit or run_all
         if run:
             st.session_state.DB_Perry = size_bundle_from_tubecount(N, Do, pitch, Ntp, angle)
             st.session_state.N_Perry = Ntubes(st.session_state.DB_Perry, Do, pitch, Ntp, angle)
@@ -99,52 +97,54 @@ def geometry_section(compute_all: bool) -> None:
                 "material": material,
                 "L_unsupported": L_unsupported,
             }
-    with right:
+    with col_result:
         if st.session_state.DB_Perry:
-            st.subheader("Résultats")
+            st.markdown("### Résultats")
             show_metric("Faisceau Perry", st.session_state.DB_Perry, "m")
             show_metric("Tubes Perry", st.session_state.N_Perry)
-            st.code(f"HEDH    = {st.session_state.DB_HEDH:.5f} m")
-            st.code(f"Phadkeb = {st.session_state.DB_Phadkeb:.5f} m")
-            st.code(f"VDI     = {st.session_state.DB_VDI:.5f} m")
-            st.code(f"DShell_min = {st.session_state.DShell_min:.5f} m")
-            show_metric("Jeu calandre-faisceau (HEDH)", st.session_state.clearance_auto, "m")
-            show_metric("Ø trou chicane (TEMA)", st.session_state.dB_hole, "m")
+            show_metric("HEDH", st.session_state.DB_HEDH, "m")
+            show_metric("Phadkeb", st.session_state.DB_Phadkeb, "m")
+            show_metric("VDI", st.session_state.DB_VDI, "m")
+            show_metric("DShell_min", st.session_state.DShell_min, "m")
+            show_metric("Clearance auto", st.session_state.clearance_auto, "m")
+            show_metric("Ø trou chicane", st.session_state.dB_hole, "m")
             show_metric("L_max sans support", st.session_state.L_max, "m")
 
 
-def clearance_section(compute_all: bool) -> None:
-    st.header("📏 Jeu Calandre-Faisceau")
-    left, right = st.columns(2)
-    with left:
+def clearance_section(run_all: bool) -> None:
+    st.subheader("📏 Jeu Calandre-Faisceau")
+    input_col, out_col = st.columns(2)
+    with input_col:
         with st.form("clearance_form"):
-            clearance_mode = st.radio("Basé sur", ["Diamètre faisceau", "Diamètre calandre"], horizontal=True)
+            mode = st.radio("Basé sur", ["Diamètre faisceau", "Diamètre calandre"], horizontal=True)
             db = ds = None
-            if clearance_mode == "Diamètre faisceau":
-                default_db = st.session_state.DB_Perry or 1.2
-                db = st.slider("Diamètre du faisceau [m]", 0.1, 3.0, default_db)
+            if mode == "Diamètre faisceau":
+                db_default = st.session_state.DB_Perry or 1.2
+                db = st.slider("Diamètre du faisceau [m]", 0.1, 3.0, db_default)
             else:
                 ds = st.slider("Diamètre de la calandre [m]", 0.1, 3.0, 1.25)
             submit = st.form_submit_button("Calculer jeu")
-        run = submit or compute_all
+        run = submit or run_all
         if run:
             result = shell_clearance(DBundle=db) if db else shell_clearance(DShell=ds)
             st.session_state.clearance_result = result
-    with right:
+    with out_col:
         if st.session_state.clearance_result:
             show_metric("Jeu recommandé", st.session_state.clearance_result, "m")
 
 
-def tema_ui(tab, func, key_prefix: str, compute_all: bool) -> None:
+def tema_ui(tab, func, key_prefix: str, run_all: bool) -> None:
     with tab:
         with st.form(f"{key_prefix}_form"):
             c1, c2, c3 = st.columns(3)
             R1 = c1.number_input("R1", 0.01, 10.0, 0.5, key=f"{key_prefix}_R1")
             NTU1 = c2.number_input("NTU1", 0.01, 20.0, 1.0, key=f"{key_prefix}_NTU")
             Ntp_local = c3.number_input("Passes tubes", 1, 4, 1, key=f"{key_prefix}_Ntp")
-            optimal = st.checkbox("Contre-courant", True, key=f"{key_prefix}_opt") if func.__name__ != "temperature_effectiveness_TEMA_J" else None
+            optimal = None
+            if func.__name__ != "temperature_effectiveness_TEMA_J":
+                optimal = st.checkbox("Contre-courant", True, key=f"{key_prefix}_opt")
             submit = st.form_submit_button("Calculer")
-        run = submit or compute_all
+        run = submit or run_all
         if run:
             if func.__name__ == "temperature_effectiveness_TEMA_J":
                 eff = func(R1, NTU1, Ntp_local)
@@ -156,8 +156,8 @@ def tema_ui(tab, func, key_prefix: str, compute_all: bool) -> None:
                 effectiveness_chart(func, R1, Ntp=Ntp_local, optimal=optimal)
 
 
-def effectiveness_section(compute_all: bool) -> None:
-    st.header("🔥 Méthodes d'Efficacité Thermique")
+def effectiveness_section(run_all: bool) -> None:
+    st.subheader("🔥 Méthodes d'Efficacité Thermique")
     tabs = st.tabs([
         "Basique", "TEMA E", "TEMA G", "TEMA H", "TEMA J",
         "Air Cooler", "Plaques", "Solveur P-NTU",
@@ -165,37 +165,36 @@ def effectiveness_section(compute_all: bool) -> None:
 
     with tabs[0]:
         with st.form("basic_form"):
-            R1 = st.number_input("R1", 0.01, 10.0, 0.5, key="basic_R1")
-            NTU1 = st.number_input("NTU1", 0.01, 20.0, 1.0, key="basic_NTU")
+            r1 = st.number_input("R1", 0.01, 10.0, 0.5)
+            ntu = st.number_input("NTU", 0.01, 20.0, 1.0)
             subtype = st.selectbox(
                 "Configuration",
                 [
                     "counterflow", "parallel", "crossflow",
                     "crossflow, mixed 1", "crossflow, mixed 2", "crossflow, mixed 1&2",
                 ],
-                key="basic_subtype",
             )
             submit = st.form_submit_button("Calculer")
-        run = submit or compute_all
+        run = submit or run_all
         if run:
-            eff = temperature_effectiveness_basic(R1, NTU1, subtype)
+            eff = temperature_effectiveness_basic(r1, ntu, subtype)
             show_metric("Efficacité estimée", eff)
-            effectiveness_chart(temperature_effectiveness_basic, R1, subtype=subtype)
+            effectiveness_chart(temperature_effectiveness_basic, r1, subtype=subtype)
 
-    tema_ui(tabs[1], temperature_effectiveness_TEMA_E, "tema_e", compute_all)
-    tema_ui(tabs[2], temperature_effectiveness_TEMA_G, "tema_g", compute_all)
-    tema_ui(tabs[3], temperature_effectiveness_TEMA_H, "tema_h", compute_all)
-    tema_ui(tabs[4], temperature_effectiveness_TEMA_J, "tema_j", compute_all)
+    tema_ui(tabs[1], temperature_effectiveness_TEMA_E, "tema_e", run_all)
+    tema_ui(tabs[2], temperature_effectiveness_TEMA_G, "tema_g", run_all)
+    tema_ui(tabs[3], temperature_effectiveness_TEMA_H, "tema_h", run_all)
+    tema_ui(tabs[4], temperature_effectiveness_TEMA_J, "tema_j", run_all)
 
     with tabs[5]:
         with st.form("air_form"):
             col1, col2 = st.columns(2)
-            R1 = col1.number_input("R1", 0.01, 10.0, 0.5, key="air_R1")
-            NTU1 = col2.number_input("NTU1", 0.01, 20.0, 2.0, key="air_NTU")
-            rows = col1.number_input("Rangées", 1, 20, 4, key="air_rows")
-            passes = col2.number_input("Passes", 1, 5, 2, key="air_passes")
+            R1 = col1.number_input("R1", 0.01, 10.0, 0.5)
+            NTU1 = col2.number_input("NTU1", 0.01, 20.0, 2.0)
+            rows = col1.number_input("Rangées", 1, 20, 4)
+            passes = col2.number_input("Passes", 1, 5, 2)
             submit = st.form_submit_button("Calculer")
-        run = submit or compute_all
+        run = submit or run_all
         if run:
             eff = temperature_effectiveness_air_cooler(R1, NTU1, rows, passes)
             show_metric("Efficacité estimée", eff)
@@ -208,14 +207,14 @@ def effectiveness_section(compute_all: bool) -> None:
 
     with tabs[6]:
         with st.form("plate_form"):
-            R1 = st.number_input("R1", 0.01, 10.0, 0.5, key="plate_R1")
-            NTU1 = st.number_input("NTU1", 0.01, 20.0, 1.0, key="plate_NTU")
-            Np1 = st.number_input("Passes côté 1", 1, 4, 2, key="plate_Np1")
-            Np2 = st.number_input("Passes côté 2", 1, 4, 2, key="plate_Np2")
-            cf = st.checkbox("Contre-courant global", True, key="plate_cf")
-            scf = st.checkbox("Contre-courant individuel", True, key="plate_scf")
+            R1 = st.number_input("R1", 0.01, 10.0, 0.5)
+            NTU1 = st.number_input("NTU1", 0.01, 20.0, 1.0)
+            Np1 = st.number_input("Passes côté 1", 1, 4, 2)
+            Np2 = st.number_input("Passes côté 2", 1, 4, 2)
+            cf = st.checkbox("Contre-courant global", True)
+            scf = st.checkbox("Contre-courant individuel", True)
             submit = st.form_submit_button("Calculer")
-        run = submit or compute_all
+        run = submit or run_all
         if run:
             eff = temperature_effectiveness_plate(R1, NTU1, Np1, Np2, cf, scf)
             show_metric("Efficacité estimée", eff)
@@ -247,7 +246,7 @@ def effectiveness_section(compute_all: bool) -> None:
             subtype = f2.selectbox("Configuration HX", ["E", "G", "H", "J", "crossflow"])
             Ntp = f3.number_input("Passes tubes", 1, 2, 2)
             submit = st.form_submit_button("Calculer")
-        run = submit or compute_all
+        run = submit or run_all
         if run:
             try:
                 result = P_NTU_method(
@@ -277,9 +276,9 @@ def effectiveness_section(compute_all: bool) -> None:
             }
 
 
-def summary_section(compute_all: bool) -> None:
-    st.header("🧾 Résumé Complet")
-    if compute_all and st.session_state.inputs_geometry and st.session_state.inputs_pntu:
+def summary_section(run_all: bool) -> None:
+    st.subheader("🧾 Résumé Complet")
+    if run_all and st.session_state.inputs_geometry and st.session_state.inputs_pntu:
         g = st.session_state.inputs_geometry
         p = st.session_state.inputs_pntu
         data = {
@@ -314,29 +313,20 @@ st.title("🧪 Suite d'Ingénierie : Échangeur Tubulaire à Calandre")
 init_session_state()
 
 with st.sidebar:
-    compute_all = st.button("🚀 Calculer tout")
+    run_all = st.button("🚀 Calculer tout")
+    selection = option_menu(
+        "Navigation",
+        ["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"],
+        icons=["rulers", "arrows-angle-contract", "graph-up", "card-list"],
+        menu_icon="cast",
+        default_index=0,
+    )
 
-# Style the navigation bar for a more polished look
-styles = {
-    "nav": {"background-color": "var(--secondary-background-color)"},
-    "div": {"max-width": "60rem"},
-    "span": {"padding": "0.5rem", "font-size": "1.05rem"},
-    "active": {"background-color": "rgba(255, 255, 255, 0.25)"},
-    "hover": {"background-color": "rgba(255, 255, 255, 0.35)"},
-}
-options = {"show_menu": False, "show_sidebar": True}
-
-page = st_navbar(
-    ["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"],
-    styles=styles,
-    options=options,
-)
-
-if page == "Géométrie":
-    geometry_section(compute_all)
-elif page == "Jeu Calandre":
-    clearance_section(compute_all)
-elif page == "Efficacité":
-    effectiveness_section(compute_all)
-elif page == "Résumé":
-    summary_section(compute_all)
+if selection == "Géométrie":
+    geometry_section(run_all)
+elif selection == "Jeu Calandre":
+    clearance_section(run_all)
+elif selection == "Efficacité":
+    effectiveness_section(run_all)
+elif selection == "Résumé":
+    summary_section(run_all)
