@@ -17,16 +17,36 @@ FEATURES = [
 st.set_page_config(page_title="HX Fouling Predictor", layout="wide")
 st.title("Heat-Exchanger Fouling Prognostics")
 
-# Tailwind and FontAwesome for enhanced UI
+# Tailwind and FontAwesome for enhanced UI and helpful header
 st.markdown(
     """
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <div class="mt-4 mb-6 bg-gray-50 border-l-4 border-blue-500 p-4 flex items-center">
+    <style>
+        body, .stApp { background-color: #f9fafb; }
+    </style>
+    <div class="bg-gradient-to-r from-blue-600 to-teal-500 text-white p-4 rounded-lg mb-6 flex items-center justify-between">
+        <div class="flex items-center">
+            <i class="fas fa-thermometer-half text-2xl mr-2"></i>
+            <h2 class="text-xl font-semibold">HX Fouling Dashboard</h2>
+        </div>
+        <a href="https://github.com" class="hover:text-gray-200"><i class="fab fa-github text-2xl"></i></a>
+    </div>
+    <div class="mt-4 mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 flex items-center">
         <i class="fas fa-info-circle text-blue-500 text-2xl mr-3"></i>
-        <p class="text-sm text-gray-700">
+        <p class="text-sm text-blue-800">
             Enter your operational data below to predict fouling buildup and cleaning schedule.
         </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.sidebar.markdown(
+    """
+    <div class="p-4">
+        <h2 class="text-lg font-semibold mb-2"><i class="fas fa-question-circle mr-2"></i>Help</h2>
+        <p class="text-sm text-gray-600">Fill in the form and click Predict to see fouling metrics.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -79,13 +99,36 @@ if submitted:
 
     fouling = m_foul.predict(df)[0]
     ttc     = max(m_ttc.predict(df)[0], 0)
-    p1,p2,p3 = st.columns(3)
-    with p1:
-        st.metric("Fouling level", f"{fouling:.3f}")
-    with p2:
-        st.metric("Hours to cleaning", f"{ttc:,.1f} h")
-    with p3:
-        status = ("🟢 **OK**"       if fouling < 0.60 else
-              "🟠 **Watch**"    if fouling < 0.85 else
-              "🔴 **Critical**")
-        st.markdown(f"## {status}")
+    status_text = (
+        "OK" if fouling < 0.60 else
+        "Watch" if fouling < 0.85 else
+        "Critical"
+    )
+    status_icon = (
+        "fa-check-circle text-green-600" if fouling < 0.60 else
+        "fa-exclamation-circle text-yellow-500" if fouling < 0.85 else
+        "fa-skull-crossbones text-red-600"
+    )
+
+    st.markdown(
+        f"""
+        <div class="grid grid-cols-3 gap-4 mt-6">
+            <div class="bg-white shadow rounded-lg p-4 text-center">
+                <i class="fas fa-oil-can text-indigo-600 text-2xl mb-2"></i>
+                <div class="text-xl font-bold">{fouling:.3f}</div>
+                <div class="text-gray-500 text-sm">Fouling level</div>
+            </div>
+            <div class="bg-white shadow rounded-lg p-4 text-center">
+                <i class="fas fa-clock text-indigo-600 text-2xl mb-2"></i>
+                <div class="text-xl font-bold">{ttc:,.1f} h</div>
+                <div class="text-gray-500 text-sm">Hours to cleaning</div>
+            </div>
+            <div class="bg-white shadow rounded-lg p-4 text-center">
+                <i class="fas {status_icon} text-2xl mb-2"></i>
+                <div class="text-xl font-bold">{status_text}</div>
+                <div class="text-gray-500 text-sm">Status</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
