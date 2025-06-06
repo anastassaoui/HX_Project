@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from streamlit_navigation_bar import st_navbar
 
 from ht.hx import (
     Ntubes,
@@ -315,13 +316,13 @@ init_session_state()
 with st.sidebar:
     compute_all = st.button("🚀 Calculer tout")
 
-tabs = st.tabs(["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"])
+page = st_navbar(["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"])
 
-with tabs[0]:
+if page == "Géométrie":
     geometry_section(compute_all)
-with tabs[1]:
+elif page == "Jeu Calandre":
     clearance_section(compute_all)
-with tabs[2]:
+elif page == "Efficacité":
     effectiveness_section(compute_all)
-with tabs[3]:
+elif page == "Résumé":
     summary_section(compute_all)
