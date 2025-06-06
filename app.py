@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from streamlit_navigation_bar import st_navbar
 from ht.hx import (
     Ntubes,
     size_bundle_from_tubecount,
@@ -21,6 +22,10 @@ from ht.hx import (
 )
 
 st.set_page_config(page_title="Suite de Conception d'Échangeur de Chaleur", layout="wide")
+page = st_navbar(["Home", "ML"], selected="Home")
+if page == "ML":
+    st.switch_page("pages/ml.py")
+
 st.title("🧪 Suite d'Ingénierie : Échangeur Tubulaire à Calandre")
 st.markdown("---")
 

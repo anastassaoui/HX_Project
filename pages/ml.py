@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import joblib
+from streamlit_navigation_bar import st_navbar
 
 m_foul = joblib.load("model_fouling.pkl")
 m_ttc  = joblib.load("model_ttc.pkl")
@@ -15,6 +16,10 @@ FEATURES = [
 ]
 
 st.set_page_config(page_title="HX Fouling Predictor", layout="wide")
+page = st_navbar(["Home", "ML"], selected="ML")
+if page == "Home":
+    st.switch_page("app.py")
+
 st.title("Heat-Exchanger Fouling Prognostics")
 
 with st.form("hx_form"):
