@@ -316,7 +316,21 @@ init_session_state()
 with st.sidebar:
     compute_all = st.button("🚀 Calculer tout")
 
-page = st_navbar(["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"])
+# Style the navigation bar for a more polished look
+styles = {
+    "nav": {"background-color": "var(--secondary-background-color)"},
+    "div": {"max-width": "60rem"},
+    "span": {"padding": "0.5rem", "font-size": "1.05rem"},
+    "active": {"background-color": "rgba(255, 255, 255, 0.25)"},
+    "hover": {"background-color": "rgba(255, 255, 255, 0.35)"},
+}
+options = {"show_menu": False, "show_sidebar": True}
+
+page = st_navbar(
+    ["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"],
+    styles=styles,
+    options=options,
+)
 
 if page == "Géométrie":
     geometry_section(compute_all)
