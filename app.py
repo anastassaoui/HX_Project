@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from streamlit_option_menu import option_menu
 
 from ht.hx import (
     Ntubes,
@@ -64,16 +65,25 @@ def init_session_state() -> None:
 def geometry_section(compute_all: bool) -> None:
     """Geometry calculations and results."""
     with st.expander("📐 Calculs de Géométrie"):
-        col1, col2 = st.columns(2)
-        with col1:
-            Do = st.number_input("Diamètre extérieur du tube [m]", 0.005, 0.1, 0.025)
+        r1c1, r1c2, r1c3 = st.columns(3)
+        with r1c1:
+            Do = st.number_input("Diamètre extérieur [m]", 0.005, 0.1, 0.025)
+        with r1c2:
             pitch = st.number_input("Pas triangulaire [m]", 0.01, 0.1, 0.03125)
-        with col2:
+        with r1c3:
             angle = st.selectbox("Angle d'agencement [°]", [30, 45, 60, 90], index=0)
-            Ntp = st.selectbox("Nombre de passes tubes", [1, 2], index=1)
-        N = st.slider("Nombre de tubes", 1, 2000, 928)
-        L_unsupported = st.number_input("Longueur non supportée [m]", 0.1, 10.0, 0.75)
-        material = st.selectbox("Matériau du tube", ["CS", "aluminium"])
+
+        r2c1, r2c2, r2c3 = st.columns(3)
+        with r2c1:
+            Ntp = st.selectbox("Passes tubes", [1, 2], index=1)
+        with r2c2:
+            N = st.slider("Nombre de tubes", 1, 2000, 928)
+        with r2c3:
+            L_unsupported = st.number_input("Longueur non supportée [m]", 0.1, 10.0, 0.75)
+
+        r3c1, _ = st.columns([1,2])
+        with r3c1:
+            material = st.selectbox("Matériau du tube", ["CS", "aluminium"])
 
         if compute_all:
             st.session_state.DB_Perry = size_bundle_from_tubecount(N, Do, pitch, Ntp, angle)
@@ -225,21 +235,29 @@ def effectiveness_section(compute_all: bool) -> None:
                 )
 
         with tabs[7]:
-            col1, col2 = st.columns(2)
-            with col1:
-                m1 = st.number_input("Débit massique 1 [kg/s]", 0.1, 50.0, 5.2)
+            r1c1, r1c2 = st.columns(2)
+            with r1c1:
+                m1 = st.number_input("Débit m1 [kg/s]", 0.1, 50.0, 5.2)
+            with r1c2:
+                m2 = st.number_input("Débit m2 [kg/s]", 0.1, 50.0, 1.45)
+
+            r2c1, r2c2 = st.columns(2)
+            with r2c1:
                 Cp1 = st.number_input("Cp1 [J/kg.K]", 1000.0, 5000.0, 1860.0)
-                T1i = st.number_input("T1 entrée [°C]", 0.0, 300.0, 130.0)
-            with col2:
-                m2 = st.number_input("Débit massique 2 [kg/s]", 0.1, 50.0, 1.45)
+            with r2c2:
                 Cp2 = st.number_input("Cp2 [J/kg.K]", 1000.0, 5000.0, 1900.0)
+
+            r3c1, r3c2 = st.columns(2)
+            with r3c1:
+                T1i = st.number_input("T1 entrée [°C]", 0.0, 300.0, 130.0)
+            with r3c2:
                 T2i = st.number_input("T2 entrée [°C]", 0.0, 300.0, 15.0)
 
             f1, f2, f3 = st.columns(3)
             with f1:
                 UA = st.number_input("UA [W/K]", 10.0, 10000.0, 3000.0)
             with f2:
-                subtype = st.selectbox("Configuration échangeur", ["E", "G", "H", "J", "crossflow"])
+                subtype = st.selectbox("Configuration HX", ["E", "G", "H", "J", "crossflow"])
             with f3:
                 Ntp = st.number_input("Passes tubes", 1, 2, 2)
             if compute_all:
@@ -312,12 +330,18 @@ st.markdown("---")
 compute_all = st.button("🚀 Calculer tous les résultats")
 init_session_state()
 
-c1, c2, c3 = st.columns([3, 2, 3])
-with c1:
-    geometry_section(compute_all)
-with c2:
-    clearance_section(compute_all)
-with c3:
-    effectiveness_section(compute_all)
+selection = option_menu(
+    menu_title="Navigation",
+    options=["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"],
+    icons=["rulers", "arrows-angle-contract", "graph-up", "table"],
+    orientation="horizontal",
+)
 
-summary_section(compute_all)
+if selection == "Géométrie":
+    geometry_section(compute_all)
+elif selection == "Jeu Calandre":
+    clearance_section(compute_all)
+elif selection == "Efficacité":
+    effectiveness_section(compute_all)
+elif selection == "Résumé":
+    summary_section(compute_all)
