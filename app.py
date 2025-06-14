@@ -516,7 +516,6 @@ def fouling_prediction_section() -> None:
         st.error(f"Erreur lors du chargement des modèles: {str(e)}")
         st.info("Assurez-vous que les fichiers model_fouling.pkl et model_ttc.pkl sont présents.")
 
-
 # ---------------------------------------------------------------------------
 # Application entry point
 # ---------------------------------------------------------------------------
