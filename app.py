@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from streamlit_option_menu import option_menu
+import joblib
 from ht.hx import (
     Ntubes,
     size_bundle_from_tubecount,
@@ -22,6 +23,15 @@ from ht.hx import (
     L_unsupported_max,
 )
 
+
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+
 # ---------------------------------------------------------------------------
 # Helper utilities
 # ---------------------------------------------------------------------------
@@ -29,7 +39,15 @@ from ht.hx import (
 def show_metric(label: str, value: float, unit: str = "") -> None:
     """Display a numeric value using Streamlit metric."""
     formatted = f"{value:.5f} {unit}" if unit else f"{value:.5f}"
-    st.metric(label, formatted)
+    st.markdown(
+        f"""
+        <div style="border: 1px solid #333; padding: 10px; background: #f0f0f0; text-align: center; border-radius: 5px;">
+            <h3>{label}</h3>
+            <p>{formatted}</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 def effectiveness_chart(func, R1: float, **kwargs) -> None:
@@ -49,6 +67,7 @@ def init_session_state() -> None:
         "DB_Perry", "N_Perry", "DB_HEDH", "DB_Phadkeb", "DB_VDI",
         "DShell_min", "clearance_auto", "dB_hole", "L_max",
         "inputs_geometry", "inputs_pntu", "clearance_result",
+        "fouling_prediction", "ttc_prediction"
     ]
     for k in keys:
         if k not in st.session_state:
@@ -276,6 +295,109 @@ def effectiveness_section(run_all: bool) -> None:
             }
 
 
+def generate_pdf_report():
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    elements = []
+    styles = getSampleStyleSheet()
+    title_style = styles['Heading1']
+    section_style = styles['Heading2']
+    normal_style = styles['Normal']
+
+    # Title
+    elements.append(Paragraph("Résumé de l'Échangeur de Chaleur", title_style))
+    elements.append(Spacer(1, 12))
+
+    # Geometry Section
+    g = st.session_state.get("inputs_geometry")
+    if g:
+        elements.append(Paragraph("Section Géométrie", section_style))
+        geo_data = [["Paramètre", "Valeur"]]
+        for k, v in g.items():
+            geo_data.append([str(k), str(v)])
+        geo_data += [
+            ["DB_Perry", str(st.session_state.get('DB_Perry'))],
+            ["N_Perry", str(st.session_state.get('N_Perry'))],
+            ["DB_HEDH", str(st.session_state.get('DB_HEDH'))],
+            ["DB_Phadkeb", str(st.session_state.get('DB_Phadkeb'))],
+            ["DB_VDI", str(st.session_state.get('DB_VDI'))],
+            ["DShell_min", str(st.session_state.get('DShell_min'))],
+            ["Clearance auto", str(st.session_state.get('clearance_auto'))],
+            ["Ø trou chicane", str(st.session_state.get('dB_hole'))],
+            ["L_max sans support", str(st.session_state.get('L_max'))],
+        ]
+        geo_table = Table(geo_data, hAlign='LEFT')
+        geo_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ]))
+        elements.append(geo_table)
+        elements.append(Spacer(1, 12))
+
+    # Clearance Section
+    if st.session_state.get("clearance_result") is not None:
+        elements.append(Paragraph("Section Jeu Calandre-Faisceau", section_style))
+        clearance_data = [["Paramètre", "Valeur"], ["Jeu recommandé", str(st.session_state.get('clearance_result'))]]
+        clearance_table = Table(clearance_data, hAlign='LEFT')
+        clearance_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ]))
+        elements.append(clearance_table)
+        elements.append(Spacer(1, 12))
+
+    # Effectiveness Section
+    p = st.session_state.get("inputs_pntu")
+    if p:
+        elements.append(Paragraph("Section Efficacité", section_style))
+        eff_data = [["Paramètre", "Valeur"]]
+        for k, v in p.items():
+            eff_data.append([str(k), str(v)])
+        eff_table = Table(eff_data, hAlign='LEFT')
+        eff_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ]))
+        elements.append(eff_table)
+        elements.append(Spacer(1, 12))
+
+    # ML Prediction Section
+    if st.session_state.get("fouling_prediction") is not None or st.session_state.get("ttc_prediction") is not None:
+        elements.append(Paragraph("Section Prédiction ML", section_style))
+        ml_data = [["Paramètre", "Valeur"]]
+        if st.session_state.get("fouling_prediction") is not None:
+            ml_data.append(["Niveau d'encrassement", str(st.session_state.get('fouling_prediction'))])
+        if st.session_state.get("ttc_prediction") is not None:
+            ml_data.append(["Heures avant nettoyage", str(st.session_state.get('ttc_prediction'))])
+        ml_table = Table(ml_data, hAlign='LEFT')
+        ml_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ]))
+        elements.append(ml_table)
+        elements.append(Spacer(1, 12))
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+
 def summary_section(run_all: bool) -> None:
     st.subheader("🧾 Résumé Complet")
     if run_all and st.session_state.inputs_geometry and st.session_state.inputs_pntu:
@@ -300,8 +422,99 @@ def summary_section(run_all: bool) -> None:
         }
         df = pd.DataFrame(data)
         st.dataframe(df, use_container_width=True)
+        st.markdown("""
+        <br/>
+        <b>Générez un rapport PDF de ce résumé :</b>
+        """, unsafe_allow_html=True)
+        pdf_buffer = generate_pdf_report()
+        st.download_button(
+            label="📄 Télécharger le PDF du Résumé",
+            data=pdf_buffer,
+            file_name="resume_echangeur.pdf",
+            mime="application/pdf"
+        )
     else:
         st.info("Cliquez sur 'Calculer tout' pour générer le résumé complet.")
+
+
+# ---------------------------------------------------------------------------
+# ML Prediction Section
+# ---------------------------------------------------------------------------
+
+def fouling_prediction_section() -> None:
+    st.subheader("🤖 Prédiction d'Encrassement")
+    
+    try:
+        m_foul = joblib.load("model_fouling.pkl")
+        m_ttc = joblib.load("model_ttc.pkl")
+        
+        with st.form("fouling_form"):
+            rtc = st.number_input("Heures depuis dernier nettoyage", 0, 7*365*24, 100)
+            a1, a2 = st.columns(2)
+            
+            with a1:
+                with st.expander("📊 Mesures de performance", expanded=False):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        dTh = st.slider("ΔT côté chaud (°C)", 0.0, 40.0, 18.0, 0.1)
+                    with c2:
+                        dTc = st.slider("ΔT côté froid (°C)", 0.0, 40.0, 16.0, 0.1)
+                    dp = st.slider("ΔP calandre (kPa)", 0.0, 150.0, 20.0, 0.1)
+            
+            with a2:
+                with st.expander("⚙️ Conditions d'opération", expanded=False):
+                    t1, t2 = st.columns(2)
+                    with t1: Tin_hot = st.slider("T entrée chaud (°C)", 80, 180, 140)
+                    with t2: Tin_cold = st.slider("T entrée froid (°C)", 5, 70, 30)
+
+                    f1, f2 = st.columns(2)
+                    with f1: q_hot = st.slider("Débit chaud (kg/s)", 5.0, 30.0, 15.0)
+                    with f2: q_cold = st.slider("Débit froid (kg/s)", 5.0, 30.0, 15.0)
+
+                    v1, v2 = st.columns(2)
+                    with v1: mu_hot = st.number_input("Viscosité chaud (cP)", 0.1, 10.0, 0.4)
+                    with v2: mu_cold = st.number_input("Viscosité froid (cP)", 0.1, 10.0, 0.9)
+
+                    solids = st.slider("Solides en suspension (ppm)", 0, 300, 50)
+
+            submit = st.form_submit_button("🔍 Prédire")
+
+        if submit:
+            features = pd.DataFrame([[
+                rtc, dTh, dTc, dp,
+                Tin_hot, Tin_cold,
+                q_hot, q_cold,
+                mu_hot, mu_cold,
+                solids
+            ]], columns=[
+                "runtime_since_cleaning_hr",
+                "deltaT_hot_C", "deltaT_cold_C", "deltaP_shell_kPa",
+                "hot_inlet_temp_C", "cold_inlet_temp_C",
+                "hot_flow_kg_s", "cold_flow_kg_s",
+                "hot_visc_cP", "cold_visc_cP",
+                "solids_ppm"
+            ])
+
+            fouling = m_foul.predict(features)[0]
+            ttc = max(m_ttc.predict(features)[0], 0)
+            
+            st.session_state.fouling_prediction = fouling
+            st.session_state.ttc_prediction = ttc
+            
+            p1, p2, p3 = st.columns(3)
+            with p1:
+                st.metric("Niveau d'encrassement", f"{fouling:.3f}")
+            with p2:
+                st.metric("Heures avant nettoyage", f"{ttc:,.1f} h")
+            with p3:
+                status = ("🟢 **OK**" if fouling < 0.60 else
+                         "🟠 **Attention**" if fouling < 0.85 else
+                         "🔴 **Critique**")
+                st.markdown(f"## {status}")
+            
+    except Exception as e:
+        st.error(f"Erreur lors du chargement des modèles: {str(e)}")
+        st.info("Assurez-vous que les fichiers model_fouling.pkl et model_ttc.pkl sont présents.")
 
 
 # ---------------------------------------------------------------------------
@@ -316,8 +529,8 @@ with st.sidebar:
     run_all = st.button("🚀 Calculer tout")
     selection = option_menu(
         "Navigation",
-        ["Géométrie", "Jeu Calandre", "Efficacité", "Résumé"],
-        icons=["rulers", "arrows-angle-contract", "graph-up", "card-list"],
+        ["Géométrie", "Jeu Calandre", "Efficacité", "Prédiction ML", "Résumé"],
+        icons=["rulers", "arrows-angle-contract", "graph-up", "robot", "card-list"],
         menu_icon="cast",
         default_index=0,
     )
@@ -328,5 +541,7 @@ elif selection == "Jeu Calandre":
     clearance_section(run_all)
 elif selection == "Efficacité":
     effectiveness_section(run_all)
+elif selection == "Prédiction ML":
+    fouling_prediction_section()
 elif selection == "Résumé":
     summary_section(run_all)
