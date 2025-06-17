@@ -3,7 +3,7 @@ import pandas as pd
 from utils.pdf_report import generate_pdf_report
 
 def summary_section(run_all: bool) -> None:
-    st.subheader("🧾 Résumé Complet")
+    st.subheader("Résumé Complet")
     if run_all and st.session_state.inputs_geometry and st.session_state.inputs_pntu:
         g = st.session_state.inputs_geometry
         p = st.session_state.inputs_pntu
